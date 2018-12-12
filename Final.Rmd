@@ -1,0 +1,1115 @@
+---
+title: "Final Project"
+author: "Oscar Jasklowski / Nicolas Maes"
+date: "12/10/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# !diagnostics off
+```
+
+```{r fig.width=7, fig.height=6}
+# !diagnostics off
+library(tidyverse)
+library(ggplot2)
+library(extracat)
+#library(naniar)
+#if (!require("DT")) devtools::install_github("rstudio/DT")
+#datatable(qRows)
+```
+
+
+```{r fig.width=6, fig.height=6}
+#### SECTION 1: IMPORT AND CLEAN DATA
+#### 1.1. Tables that require transpose:
+
+# Method that will transpose data:
+transpose_df <- function(df) {
+  tmp <- df
+  # Remove commas from all columns:
+  tmp <- data.frame(lapply(tmp, function(x) { gsub(",", "", x) }))
+  tmp <- as.tibble(tmp)
+  # Transpose logic
+  tmp <- as_tibble(cbind(nms = names(tmp), t(tmp)))
+  colnames(tmp) <- tmp[1, ] 
+  tmp <- tmp[-1, ] 
+  # Remove the X from your first column
+  #tmp$X1 <- gsub("X", "", tmp$X1)
+  tmp[[1]] <- gsub("X", "", tmp[[1]])
+  # Give each column a unique name
+  x <- colnames(tmp)
+  y <- as.character(1:length(x))
+  z <- paste0(x, "_", y)
+  colnames(tmp) <- z
+  colnames(tmp)[1] <- 'year'
+  #Convert remaining columns to numeric. 
+  tmp <- tmp %>% mutate_each(funs(as.numeric), -year)
+  # TODO: Don't forget to remove TQ row.
+  return(tmp)
+}
+
+# Most common variety of file that needs to be transposed
+# This file is still somewhat unique
+tt_2_4 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_2_4.csv", col_names = TRUE, skip = 2))
+# All files below this line have a value in cell 3A
+tt_3_2 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_3_2.csv", col_names = TRUE, skip = 2))
+tt_4_1 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_4_1.csv", col_names = TRUE, skip = 2))
+tt_5_1 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_5_1.csv", col_names = TRUE, skip = 2))
+tt_5_2 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_5_2.csv", col_names = TRUE, skip = 2))
+tt_5_4 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_5_4.csv", col_names = TRUE, skip = 2))
+tt_5_6 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_5_6.csv", col_names = TRUE, skip = 2))
+tt_8_5 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_8_5.csv", col_names = TRUE, skip = 2))
+tt_8_7 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_8_7.csv", col_names = TRUE, skip = 2))
+tt_9_6 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_9_6.csv", col_names = TRUE, skip = 2))
+tt_9_8 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_9_8.csv", col_names = TRUE, skip = 2))
+tt_9_9 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_9_9.csv", col_names = TRUE, skip = 2))
+tt_11_2 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_11_2.csv", col_names = TRUE, skip = 2))
+tt_12_2 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_12_2.csv", col_names = TRUE, skip = 2))
+tt_12_3 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_12_3.csv", col_names = TRUE, skip = 2))
+tt_13_1 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_13_1.csv", col_names = TRUE, skip = 2))
+
+# Currency in billions
+tt_8_6 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_8_6.csv", col_names = TRUE, skip = 2))
+tt_8_8 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_8_8.csv", col_names = TRUE, skip = 2))
+
+# Skip only 1 row:
+tt_4_2 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_4_2.csv", col_names = TRUE, skip = 1))
+tt_5_3 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_5_3.csv", col_names = TRUE, skip = 1))
+tt_5_5 <- transpose_df(read_csv("~/Desktop/FP_Package_12_02/csv/tt_5_5.csv", col_names = TRUE, skip = 1))
+
+```
+
+
+```{r fig.width=3, fig.height=3}
+#### 1.2. Tables that DO NOT require transpose:
+clean_non_transpose_df <- function(df) {
+  tmp <- df
+  # Rename second column to simply "year" and remove old data.
+  colnames(tmp)[2] <- "year"
+  tmp <- tmp %>% filter(`year` >= "1900") 
+  # remove the TQ row and "Note" row (these appear to be bad)
+  tmp <- tmp[!(tmp$`year` == "TQ"),]
+  tmp <- tmp[!(grepl("Note", tmp$`year`)),]
+  # remove "estimate" rows (future data)
+  tmp <- tmp[!(grepl("estimate", tmp$`year`)),]
+  # TODO: remove all footnotes (these start with *)
+  # Remove commas from all columns:
+  tmp <- lapply(tmp, function(x) { gsub(",", "", x) })
+  tmp <- as.tibble(tmp)
+  #Convert remaining columns to numeric. 
+  tmp <- tmp %>% mutate_each(funs(as.numeric), -year)
+  # TODO: convert the datatype of all "year" columns from "chr" to "date"
+  return(tmp)
+}
+
+t_1_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_1_1.csv', col_names = TRUE))
+t_1_2 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_1_2.csv', col_names = TRUE))
+t_1_3 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_1_3.csv', col_names = TRUE))
+t_1_4 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_1_4.csv', col_names = TRUE))
+t_2_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_2_1.csv', col_names = TRUE))
+t_2_2 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_2_2.csv', col_names = TRUE))
+t_2_3 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_2_3.csv', col_names = TRUE))
+t_2_5 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_2_5.csv', col_names = TRUE))
+t_7_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_7_1.csv', col_names = TRUE))
+t_7_2 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_7_2.csv', col_names = TRUE))
+t_8_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_8_1.csv', col_names = TRUE))
+t_8_2 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_8_2.csv', col_names = TRUE))
+t_8_3 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_8_3.csv', col_names = TRUE))
+t_8_4 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_8_4.csv', col_names = TRUE))
+t_9_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_9_1.csv', col_names = TRUE))
+t_9_2 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_9_2.csv', col_names = TRUE))
+t_9_3 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_9_3.csv', col_names = TRUE))
+t_9_4 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_9_4.csv', col_names = TRUE))
+t_9_5 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_9_5.csv', col_names = TRUE))
+t_9_7 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_9_7.csv', col_names = TRUE))
+t_10_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_10_1.csv', col_names = TRUE))
+t_11_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_11_1.csv', col_names = TRUE))
+t_12_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_12_1.csv', col_names = TRUE))
+t_14_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_14_1.csv', col_names = TRUE))
+t_14_2 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_14_2.csv', col_names = TRUE))
+t_14_3 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_14_3.csv', col_names = TRUE))
+t_14_4 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_14_4.csv', col_names = TRUE))
+t_14_5 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_14_5.csv', col_names = TRUE))
+t_14_6 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_14_6.csv', col_names = TRUE))
+t_15_1 <- clean_non_transpose_df(read_csv('~/Desktop/FP_Package_12_02/csv/t_15_1.csv', col_names = TRUE))
+
+```
+
+```{r fig.width=7, fig.height=6}
+#### 1.3. Data we generated to augment the dataset:
+party <- read_csv('~/Desktop/FP_Package_12_02/csv/control_party.csv', col_names = TRUE)
+party$year <- as.character(party$year)
+```
+
+# 1. Introduction
+
+### 1.1. Topic Introduction
+
+
+
+Leading up to the 2018 U.S. midterm elections in November, political discourse seemed to reach a fever pitch. Not only have politics become a hot topic, but political discussions have become increasingly hostile across political party lines. I think this hostility is exacerbated by misinformation; neither party can seem to agree (at least publicly) on the facts.
+
+
+This project is an effort to get back to the facts when it comes to government spending. By using publicly available federal government spending data from whitehouse.gov and augmenting it with party information (i.e. which political party controlled the executive and legislative branches in a given year), we can investigate federal spending behavior by party. More specifically, we can begin to answer questions such as “which party tends to spend more on social programs and to what degree?” 
+
+
+### 1.2. Group Members and Responsibilities
+
+
+Members: Oscar Jasklowski and Nicolas Maes
+
+
+Responsibilities:
+
+
+1. Data preparation (identification, processing in Python, loading into R): Oscar
+2. Data quality: Oscar
+3. Main Analysis: 
+  - Federal income: Nicolas
+  - Federal debt: Both members
+  - Funding by agency: Oscar
+4. Executive Summary: Oscar
+5. Interactive Component: Oscar
+6. Write up, publishing, and submission: Oscar
+
+
+# 2. Description of data
+
+The government website https://www.whitehouse.gov/omb/historical-tables/ publishes annual data on federal income and spending. In some cases, this spending data goes back to the 1700s! Most data, though, is available beginning at some point in the 1900s, which is more relevant for analyzing modern politics.
+
+A more detailed overview of all data available on whitehouse.gov can be found in the appendix (section 8b). Below, is an overview of our collection and cleaning process, as well as an overview of the data that was available.
+
+
+### 2.1. Collection and cleaning pipeline 
+
+Upon inspecting the raw .xlsx files, it became clear that we were dealing exclusively with time-series data. Further, it was clear that all 57 files were in one of two formats, with a fairly evenly split between two types:
+
+
+1. Type I -- Rows for year, columns for spending data.
+2. Type II -- Columns for year, rows for spending data.
+
+
+Our objective became to convert both of these file types into a single, standardized format. This would allow us to A) easily join datasets (using “year” as the join key) and B) transform and plot using ggplot2 as necessary.
+
+In order to achieve this objective, we set up the following data processing pipeline:
+
+
+1. Download .xlsx files, convert to CSV.
+2. For Type I data, write a Python script to un-merge and systematically clean the column headers, saving back to CSV (see image of raw column headers below).
+<image of raw column headers>
+3. Import data into R by reading from CSVs
+
+
+Within R, tidy the data by performing the following operations: 
+
+
+1. Transpose all Type II tables.
+2. Remove unnecessary/erroneous years
+3. Create a column for “year” so as to have a standard join key. At this point, all Type I and Type II tables could be simply joined using dplyr, which made downstream data exploration and visualization much faster.
+4. For all other columns, remove commas and convert all columns from character to numeric data types.
+
+
+### 2.2. Overview of available data
+
+Although we used the data pipeline above to clean all of the available data (57 raw .xlsx files in total), for the purpose of analysis, we narrowed our scope and focused on the following information, which represents a subset of the available data (all data annual, going back at least 60 years):
+
+
+1. Federal income (raw file 2.2) 
+2. Federal debt (raw file 7.1) 
+3. Annual deficit  (raw files 1.1, 1.2, 1.3)
+4. Outlays (i.e. spending) by federal agency (raw file 4.2)
+5. Federal Investments (raw file 9.1) 
+
+
+Finally, we augmented the available data by compiling, for the last 100 years, the party of President, as well as the parties dominating the Senate and House of Representatives. This allowed us to explore income and spending by elected party.
+
+
+# 3. Analysis of data quality
+
+
+Generally speaking, this dataset had very few missing, impossible, or non-sensical values. Although the data was spread across 57 datasets, each dataset was relatively small (typically representing less than 100 years), so the data quality was high.
+
+
+To determine the degree to which data was missing and to assess data quality more objectively, we relied heavily on the Extracat library, particularly the visna plots. Below are visna plots for two or our most commonly used datasets, as well as a quick explanation of the significance of missing values:
+
+
+Federal Income Data:
+
+
+```{r fig.width=5, fig.height=2}
+# Data quality: Analyze missing data:
+visna(t_2_2, sort= "b")
+```
+
+
+Clearly, we are missing almost no data for Federal Income. Missing data is from 1934-1936, and the data begins in 1934.
+
+
+Percent of Federal Spending by Agency:
+
+
+```{r fig.width=5, fig.height=3}
+# Data quality: Analyze missing data:
+visna(tt_4_2, sort= "b")
+```
+
+
+In the case of this dataset, there are more missing values. However, many of these were artifacts of transposing the raw data tables (this dataset is an example of one that required tranpose). There were no missing values for any of the data from the 10 highest-share agencies, and this dataset goes back to 1962.
+
+
+# 4. Main Exploratory Data Analysis
+
+
+### 1. Federal Income
+
+In this first part we are exploring the distribution of the sources of Income of the Federal Government, and the way they evolve over time.
+
+
+The sources are split between five categories: Individual Income Taxes, Corporation Income Taxes, Social Insurance and Retirement Receipts, Excise Tax and Others.
+
+
+The “Others” category of receipts is composed of Estate and GIft Taxes, Customs Duties and Fees and Miscellaneous Receipts.
+
+```{r fig.width=7, fig.height=6}
+# Simplying field labels (sources)
+t_2_2_1 <- t_2_2 %>% select(year, Individual = `Individual Income Taxes-`, Corporation = `Corporation Income Taxes-`, Social_Insurance = `Social Insurance and Retirement Receipts-Total`, Excise = `Excise Taxes -(Off - Budget)`, Other = `Other-(Off - Budget)`)
+
+# re-arranging data by (year, Source, Percent)
+t_2_2_2 <- t_2_2_1 %>% gather(key = "Source", value = "Percent", -year)
+
+t_2_2_2$year <- as.Date(t_2_2_2$year, "%Y") 
+
+ggplot(t_2_2_2, aes(x = year, y = Percent, fill = Source)) + 
+  geom_area(position = 'stack', alpha = 0.6) + 
+  ggtitle("Receipts by Source as Percentages of GDP since 1934")
+```
+
+
+We observe that the part of income coming from Corporation has come down sharply between the end of World War II and the early 80s, to reach a low during the Reagan presidency. 
+
+
+This decrease has been compensated by the rise of the Social Insurance and Retirement receipts, as we observe the anti-correlation between the two variables in the chart below:
+
+
+
+```{r fig.width=7, fig.height=6}
+#charting the anti-correlation between Corporation and Social Insurance and Retirement Receipts 
+ggplot(t_2_2_1, aes(x = Corporation, y = Social_Insurance)) + 
+  geom_point() + 
+  xlab("Corporation Income Tax") + 
+  ylab("Social Insurance and Retirement Receipts") + 
+  ggtitle("Relationship between Social Insurance and Retirement Receipts and Corporation Income Taxes ")
+```
+
+
+The Excise tax used to represent the largest source in the 30s but their part has shrinked, to only represent a few percents today. Likewise, the Others source have been consistently representing only 4 to 6% of the total income since the 60s. 
+
+
+Finally, the Individual Income have been constantly providing a relative stable part of the total income, between 40% and 50%.
+
+
+In order to find if there is any relationship between ruling party and evolution in the different source of receipts, we add blue stripes in the background of time series for periods of Democratic Presidents and white stripes for Republican Presidents:
+
+
+```{r fig.width=7, fig.height=6}
+t_2_2_1x <- t_2_2 %>% 
+  select(year, Individual = `Individual Income Taxes-`, Corporation = `Corporation Income Taxes-`, Social_Insurance = `Social Insurance and Retirement Receipts-Total`, Excise = `Excise Taxes -(Off - Budget)`, Other = `Other-(Off - Budget)`)
+t_2_2_2x <- t_2_2_1x %>% gather(key = "Source", value = "Percent", -year)
+t_2_2_2x$year <- as.Date(paste0(t_2_2_2x$year, "-01-01"), "%Y-%m-%d")
+
+t_2_2_2x <- t_2_2_2x %>% filter(year > "1952-01-01", year < "2017-01-01")
+
+ggplot(t_2_2_2x, aes(x = year, y = Percent, color = Source)) + geom_line() +
+      annotate("rect", 
+      fill = c("blue","white","blue","white","blue","white","blue"), 
+      alpha = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1), 
+      xmin=c(
+           as.Date("1963-01-01"),
+           as.Date("1969-01-01"),
+           as.Date("1977-01-01"),
+           as.Date("1981-01-01"),
+           as.Date("1993-01-01"),
+           as.Date("2001-01-01"),
+           as.Date("2009-01-01")
+       ), 
+      xmax=c(
+           as.Date("1968-12-31"),
+           as.Date("1976-12-31"),
+           as.Date("1980-12-31"),
+           as.Date("1992-12-31"),
+           as.Date("2000-12-31"),
+           as.Date("2008-12-31"),
+           as.Date("2016-12-31")
+       ), 
+      ymin = c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf), 
+      ymax = c(Inf, Inf, Inf, Inf, Inf, Inf, Inf)
+   )+ 
+  ggtitle("Receipts by Source as Percentages of GDP since 1934")
+
+```
+
+
+
+It is clear that the Corporation Income Taxes have been cut at the beginning of most of the mandates of Republican Presidents: in 1953, 1969, 1981 and 2001. In the total of Receipts they have been compensated by increase in Social Insurance and Retirement Receipts, and at a lesser extent the Individual Income Taxes.
+
+
+### 2. Federal Debt and Deficit
+
+
+We are now looking at the annual surplus or deficit, measured in 2009 dollars. We start with the distribution of annual surplus or deficit, at times conditioning on the political party of the President holding office that year.
+
+
+
+```{r fig.width=7, fig.height=6}
+# !diagnostics off
+library(tidyverse)
+library(ggplot2)
+
+df <- read_csv("~/Desktop/FP_Package_12_02/Processed_CSVs/10_hist10z1_GDP.csv")
+#df
+# Temporary work-around for getting data:
+def <- read_csv("~/Desktop/FP_Package_12_02/Processed_CSVs/1_processed_deficit.csv")
+ag <- read_csv("~/Desktop/FP_Package_12_02/Processed_CSVs/4_processsed_percentage_by_agency.csv")
+gdp <- read_csv("~/Desktop/FP_Package_12_02/Processed_CSVs/10_processed_GDP.csv")
+
+#pres <- read_csv("~/Desktop/FP_Package_12_02/Processed_CSVs/pres_party.csv")
+#pres$year <- as.character(pres$year)
+
+pres <- read_csv('~/Desktop/FP_Package_12_02/csv/control_party.csv', col_names = TRUE)
+pres$year <- as.character(party$year)
+
+# Choose columns of interest:
+def_clean <- def %>% select("year" = "Fiscal Year", "Surplus_Current" = "Surplus or Deficit (-) - Current dollars (bil)", "Surplus_2009" = "Surplus or Deficit (-) - Constant (FY 2009) Dollars (billions)", "Surplus_pct" = "Surplus or Deficit (-) - Percentage of GDP") %>% inner_join(pres, by = "year")
+
+# Plot frequency histogram of years per deficit bin:
+hist <- ggplot(def_clean, aes(x = Surplus_2009)) + geom_histogram(bins = 15) + ggtitle("Frequency Histogram of US Annual Budget Surplus/Deficit") + xlab("Surplus or Deficit (in billions of dollars)") 
+hist
+
+# Plot same histogram as above, but faceted by party:
+hist_party <- ggplot(def_clean, aes(x = Surplus_2009)) + geom_histogram(bins = 15) + facet_grid(pres_party ~ .) + ggtitle("Frequency Histogram of US Annual Budget Surplus/Deficit by Presidential Party (Democrat vs. Republican)") + xlab("Surplus or Deficit (in billions of dollars)")
+hist_party
+
+
+# Plot the same data as above, but show an overlapping density curve:
+dens_party <- ggplot(def_clean, aes(x = Surplus_2009)) + geom_density(aes(color = pres_party)) + scale_color_manual(values=c("#56B4E9","#FF0000")) + ggtitle("Density Plot of US Annual Budget Surplus/Deficit by Presidential Party (Democrat vs. Republican)") + xlab("Surplus or Deficit (in billions of dollars)") 
+dens_party
+
+# Show distribution of deficits by party using a boxplot:
+# box_party <- ggplot(def_clean, aes(x = pres_party, y = Surplus_2009)) + geom_boxplot() + ggtitle("Boxplots Showing Distribution of US Annual Budget Surplus/Deficit by Presidential Party (Democrat vs. Republican)") + ylab("Surplus or Deficit (in billions of dollars)") 
+# box_party
+
+# Show a time series of annual deficit over time:
+
+#line_deficit <- ggplot(def_clean, aes(x = year, y = Surplus_2009, group = 1)) + geom_line() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ggtitle("Annual US Budget Surplus/Deficit Since 1940") + ylab("Surplus or Deficit (in billions of dollars)") 
+#line_deficit
+```
+
+
+
+With a few exceptions, the US Federal Government almost always incurs a deficit. The distibution is centered around minus 250 million (per year).
+
+
+Since 1940, there is more data for the democratic party (US presidents have belonged to the democratic party more times than republicans in that time). Democrats have incurred both the highest deficits and the highest surpluses.
+The republican distribution is centered slightly to left (towards greater deficit) than that of the democrats. Finally, the biggest deficits occured during mandates of Democrat Presidents, however they are outliers of the distributions as indeed they happened at the exceptionnal occasional of the subprimes crisis.
+
+
+Now we are investigating the relationship between deficit and debt.
+
+
+
+```{r fig.width=7, fig.height=6}
+# Debt VS Deficit
+
+t7 <- t_7_1 %>% select("year", "As Percentages of GDP-Gross  Federal Debt-Other")
+t1 <- t_1_2 %>% select("year", "Total-Surplus or Deficit (-)")
+
+dd <- t7 %>% inner_join(t1, by = "year") %>% select("year", "Debt"="As Percentages of GDP-Gross  Federal Debt-Other", "Surplus_or_Deficit" = "Total-Surplus or Deficit (-)")
+dd$year <- as.Date(paste0(dd$year, "-01-01"), "%Y-%m-%d")
+
+dd_final <- dd %>% gather(key = "Metric", value = "Percent", -year) %>% filter(!grepl("estimate",year)) %>% filter(!grepl("TQ",year))
+
+ggplot(dd_final, aes(x = year, y = Percent, color = Metric)) + geom_line() + ggtitle("Surplus or Deficit and Federal Debt since 1940") + ylab("Percent of GDP")
+ggplot(dd, aes(x = Debt, y = Surplus_or_Deficit)) + geom_point() + ggtitle("Relationship between Surplus or Deficit and Federal Debt")+xlab("Federal Debt in percentage of GDP")+ylab("Surplus or Deficit in Percentage of GDP")
+
+```
+
+
+
+There is no clear anti-correlation between debt and deficit, contrary to what we could intuit. However the debt only increased in the years that followed a strong deficit like at the end of World War II, after the recession of the early 80s and after the 2008 crisis. The level of debt also depends on other factors like the level of interest rates in particular, which were very high in the late 70s.
+
+
+
+```{r fig.width=7, fig.height=6}
+# Debt VS Deficit
+
+t7 <- t_7_1 %>% select("year", "As Percentages of GDP-Gross  Federal Debt-Other")
+t1 <- t_1_2 %>% select("year", "Total-Surplus or Deficit (-)")
+
+dd <- t7 %>% inner_join(t1, by = "year") %>% select("year", "Debt"="As Percentages of GDP-Gross  Federal Debt-Other", "Surplus_or_Deficit" = "Total-Surplus or Deficit (-)")
+dd$year <- as.Date(paste0(dd$year, "-01-01"), "%Y-%m-%d")
+
+dd_final <- dd %>% gather(key = "Metric", value = "Percent", -year) %>% filter(!grepl("estimate",year)) %>% filter(!grepl("TQ",year))
+
+ggplot(dd_final, aes(x = year, y = Percent, color = Metric)) + geom_line()
+ggplot(dd, aes(x = Debt, y = Surplus_or_Deficit)) + geom_point()
+
+```
+
+
+
+### 3. Allocation of federal funding by agency
+
+
+In this section, our objective was to investigate the relationship between elected party (Democrat or Republican) and allocation of funding to various agencies. Our process to answer this question is as follows:
+
+
+##### A. Choose agencies of interest
+
+
+Because there are 40 agencies represented in our dataset, we narrowed our focus and chose a combination of A) agencies that receive the largest share of funding, and B) agencies that have see their share of the funding increase or decrease dramatically over the last 60 years. 
+
+Here are the top 10 agencies by share of federal funding allocated to them (we chose to focus on the top 4 in this group):
+
+
+```{r fig.width=7, fig.height=6}
+##### (4.2) Outlays by agency
+tmp <- tt_4_2 %>% select("year",
+  "Legislative Branch" = "Legislative Branch_2",
+  "Judicial Branch" = "Judicial Branch_3",
+  "Agriculture" = "Department of Agriculture_4",
+  "Commerce" = "Department of Commerce_5",
+  "Defense" = "Department of Defense--Military Programs_6",
+  "Education" = "Department of Education_7",
+  "Energy" = "Department of Energy_8",
+  "Health and Human Services" = "Department of Health and Human Services_9",
+  "Homeland Security" = "Department of Homeland Security_10",
+  "Housing UD" = "Department of Housing and Urban Development_11",
+  "Interior" = "Department of the Interior_12",
+  "Justice" = "Department of Justice_13",
+  "Department of Labor" = "Department of Labor_14",
+  "State Department" = "Department of State_15",
+  "Transportation" = "Department of Transportation_16",
+  "Treasury" = "Department of the Treasury_17",
+  "Veterans Affairs" = "Department of Veterans Affairs_18",
+  "Corps of Engineers" = "Corps of Engineers--Civil Works_19",
+  "Other Defense Civil Programs" = "Other Defense Civil Programs_20",
+  "EPA" = "Environmental Protection Agency_21",
+  "Executive Office" = "Executive Office of the President_22",
+  "General Services Administration" = "General Services Administration_23",
+  "International Assistance" = "International Assistance Programs_24",
+  "NASA" = "National Aeronautics and Space Administration_25",
+  "NSF" = "National Science Foundation_26",
+  "Personnel Management" = "Office of Personnel Management_27",
+  "Small Business" = "Small Business Administration_28",
+  "Social Security" = "Social Security Administration (Off-Budget)_30",
+  "Infrastructure" = "Infrastructure Initiative_31",
+  "Total outlay" = "Total outlays_38"
+)
+
+max <- sapply(tmp, max, na.rm = TRUE)
+yo_max <- as.tibble(data.frame(keyName=names(max), value=max, row.names=NULL))
+
+min <- sapply(tmp, min, na.rm = TRUE)
+yo_min <- as.tibble(data.frame(keyName=names(min), value=min, row.names=NULL))
+
+mean <- sapply(tmp, mean, na.rm = TRUE)
+yo_mean <- as.tibble(data.frame(keyName=names(mean), value=mean, row.names=NULL))
+
+yo <- yo_max %>% inner_join(yo_min, by = "keyName") %>% inner_join(yo_mean, by = "keyName") %>% rename(max = value.x, min = value.y, mean = value) %>% filter(keyName != "year") %>% filter(keyName != "* 0.05 percent or less_39")
+yo$min <- as.numeric(as.character(yo$min))
+yo$max <- as.numeric(as.character(yo$max))
+yo$mean <- as.numeric(as.character(yo$mean))
+
+yo$abs <- yo$max - abs(yo$min)
+yo$rat <- yo$abs / abs(yo$max)
+
+# Top agencies by mean share of outlays:
+top <- yo %>% select(keyName, rat, mean) %>% arrange(-mean) %>% filter(rat < 1) %>% filter(mean < 100)
+ggplot(top, aes(x = reorder(keyName, -mean), y = mean)) + geom_col() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("Federal Agency") +
+  ylab("Average Percent of Federal Budget") +
+  ggtitle("Average Percent of Federal Budget by Agency from 1962-2016")
+top_agencies1 <- top %>% head(4) %>% select(keyName)
+```
+
+
+
+
+Evidently, there are four agencies that are each more than three times as large as any other agency (Defense, Social Security, Health and Human Services, and Treasury).
+
+
+Additionally, some agencies have seen their share of federal funding change (either increase or decrease) by a factor of three or more during the past 60 years. The nin most “volatile” agencies are plotted below: 
+
+
+
+
+```{r fig.width=7, fig.height=6}
+# Top volatile agencies
+fluc <- yo %>% select(keyName, rat, mean) %>% arrange(-mean) %>% filter(rat < 1) %>% head(10) %>% arrange(-rat) %>% filter(mean < 100) #%>% filter(rat > .7) 
+ggplot(fluc, aes(x = reorder(keyName, -rat), y = rat)) + geom_col() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("Federal Agency") +
+  ylab("Relative Change in Funding") +
+  ggtitle("Federal Agencies by Greatest Change in Budget (as share of federal spending)")
+top_agencies2 <- fluc %>% filter(rat > .67) %>% select(keyName)
+
+agencies_of_interest <- union(c("year"), union(top_agencies1$keyName, top_agencies2$keyName))
+```
+
+
+Going forward, we will limit our scope and only investigate the union of these two sets of agencies (largest and most volatile).
+
+
+##### B. Investigate relationships between agencies
+
+
+The dataset we are using provides us with the share of the budget that each agency is allocated. This being the case, the total allocation for all agencies combined necessarily sums to one. As such, we expect funding trade-offs between agencies to be especially evident here.
+
+
+Below is a scatterplot matrix showing the relationship between each two-agency combination in our agencies of interest:
+
+
+```{r fig.width=7, fig.height=6}
+## Lattice Plots
+library(lattice)
+
+prep <- tmp %>% select(year, agencies_of_interest)
+# TODO: Give even shorter names to agencies of interest; it breaks the splom plot.
+
+prep1 <-prep %>% inner_join(party, by = "year")
+prep1$pres_party <- as.factor(prep1$pres_party)
+prep1$Senate <- as.factor(prep1$Senate)
+prep1$House <- as.factor(prep1$House)
+
+splomvar1 <- prep1 %>% select(-year, -pres_party, -Senate, -House)
+
+# Plot 1: Simply plot relationships between variables
+splom(splomvar1, main = "Percent of Federal Budget by Agency")
+
+# Plot 2: Plot relationships between variables with color for presidential party
+#splom(splomvar1, col = c("red","blue")[prep1$pres_party])
+```
+
+
+We observe the following positive correlations:
+
+
+1. Social security and health, treasury
+2. Social security and EPA (weaker)
+3. NASA and transportation (weaker)
+4. Defense and NASA (weaker)
+
+
+Insight:
+
+
+We observe the following negative correlations:
+
+
+1. Defense and health, treasury, and social security
+2. Social security and transportation, NASA
+3. NASA and health
+4. Transportation and health
+
+
+Insight:
+
+
+Other interesting patterns:
+
+
+1. National science foundation totally flat except for a few years. What are those years? Plot over time.
+2. Interesting U-shape curve for Treasury and Health. What is happening here? Plot over time.
+
+
+Although we hypothesized it would be interesting color points by presidential party (i.e. blue data points for years where a Democratic president was in office), this plot was not helpful. While the points do tend to cluster by party, this is likely because presidents are in power for consecutive years (often 8 at a time), and we only expect to see incremental annual shifts.
+
+
+##### C. Investigate allocation by party 
+
+
+In this case, we ignore the time dimension and simply plot the average allocation for each agency, by party. For years where neither party had complete control of the executive and legislative branches, we represent this as “mixed” and purple in color.
+
+
+
+```{r fig.width=7, fig.height=6}
+## Time Series:
+# Plot 3: Graph all interesting agencies over time
+# Tidy the data (gather, remove bad data, convert characters to date):
+
+tmp2 <-tmp %>% inner_join(party, by = "year") %>% select(-Senate, -House)
+#tmp2
+zz_early <- tmp2 %>% 
+      #filter(year < 1980) %>%
+      select(-year) %>%
+      group_by(pres_party) %>% 
+      summarize_all(funs(mean)) %>% 
+      gather(key = "Agency", value = "Mean_Allocation", -pres_party) %>%
+      filter(Mean_Allocation < 99, Mean_Allocation > 1.8)
+
+zz_late <- tmp2 %>% 
+      filter(year > 1980) %>%
+      select(-year) %>%
+      group_by(pres_party) %>% 
+      summarize_all(funs(mean)) %>% 
+      gather(key = "Agency", value = "Mean_Allocation", -pres_party) %>%
+      filter(Mean_Allocation < 99, Mean_Allocation > 1.8)
+
+#zz
+ggplot(zz_early, aes(Agency, Mean_Allocation)) +   
+  geom_bar(aes(fill = pres_party), position = "dodge", stat="identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Federal Agency") +
+  ylab("Average Percent of Federal Budget") +
+  ggtitle("Average Percent of Federal Budget by Agency and Party between 1962-2016") +
+  scale_fill_manual(values=c("#56B4E9","#FF0000"))
+```
+
+
+
+This result is quite surprising! For all the characterizations of modern Republicans as prone to spending on defense and prone to cutting on social programs, education, the environment, etc., on average, the opposite tends to be true over the last 60 years.
+
+
+Perhaps it's only more modern Republicans that have earned that perception. We investigate this by looking only at data since 1980; around the beginning of the Reagan Presidency.
+
+
+
+```{r fig.width=7, fig.height=6}
+ggplot(zz_late, aes(Agency, Mean_Allocation)) +   
+  geom_bar(aes(fill = pres_party), position = "dodge", stat="identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Federal Agency") +
+  ylab("Average Percent of Federal Budget") +
+  ggtitle("Average Percent of Federal Budget by Agency and Party between 1980-2016") +
+  scale_fill_manual(values=c("#56B4E9","#FF0000"))
+```
+
+
+In this case, the narrative that Republicans more inclined than Democrats to allocate funding to Defense over social programs is borne out in the data.
+
+
+
+##### D. Allocation trends over time
+
+
+We created simple line charts to observe changes by agency over time. This was an effective way to create hypotheses for why funding changed based on our knowledge of significant historical events (e.g. we hypothesized that defense spending dropped sharply in the 1970s because the Vietnam War ended). Also, this allowed us to easily look for the relationships we identified using the scatterplot matrix in 4.3.B. Below is our initial graph.
+
+
+```{r fig.width=7, fig.height=6}
+## Time Series:
+# Plot 3: Graph all interesting agencies over time
+# Tidy the data (gather, remove bad data, convert characters to date):
+prep2 <- prep1 %>% select(-Senate, -House)
+prep2 <- prep %>% gather(key = "Agency", value = "Percent", -year) %>% filter(!grepl("estimate",year)) %>% filter(!grepl("TQ",year))
+prep2$year <- as.Date(paste0(prep2$year, "-01-01"), "%Y-%m-%d")
+
+
+ggplot(prep2, aes(x = year, y = Percent, color = Agency)) + geom_line() +
+  xlab("Year") +
+  ylab("Percent") +
+  ggtitle("Percent of Federal Budget by Agency from 1962-2018")
+```
+
+
+
+Observations:
+
+1. Defense:
+  + Steep decline in early 1970s and early 1990s
+  + Slight increases in early 1980s and early 2000s
+  + Insight: Nixon and Ford in the 70’s run counter to the “hawkish” perception of modern republicans.
+2. Treasury:
+  + Almost doubles (as share of total) from 1980-1999.
+  + Drops by same amount between 1999-2014.
+  + Question: What accounts for the steep and continuous increase in the 80s and 90s? Presumably it’s more difficult to increase allocation to an agency than decrease it.
+3. Health:
+  + Steep increase (more than 2x) 1965-1973
+  + Steep increase (almost 2x) 1990-1997
+  + Big jump at 2012 (Affordable Care Act?)
+  + Insight: only agency to continuously increase.
+4. Social Security:
+  + Steep jumps in 1970-1975, 2012-2014
+  + Same plot, but have background blue / red color for presidential party
+  + Question: Unprecedented step-increase after the ‘09 recession, but there appears to be a lag. The jump in funding doesn’t occur until around 2013.
+
+
+This plot was somewhat hard to read, so we chose the four agencies above and faceted the plot, as below:
+
+
+
+```{r fig.width=7, fig.height=6}
+# Plot 4: All agencies over time, with background color for presidential party in office.
+prep2$Agency <- as.factor(prep2$Agency)
+# ggplot(prep2 , aes(x = year, y = Percent, color = Agency)) + 
+#   geom_line() +
+#   annotate("rect", 
+#        #fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+#        fill = c("white","blue","white","blue","white","blue","white","blue","white"), 
+#        alpha = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1), 
+#        xmin=c(
+#             as.Date("1960-01-01"),
+#             as.Date("1961-01-01"),
+#             as.Date("1969-01-01"),
+#             as.Date("1977-01-01"),
+#             as.Date("1981-01-01"),
+#             as.Date("1993-01-01"),
+#             as.Date("2001-01-01"),
+#             as.Date("2009-01-01"),
+#             as.Date("2017-01-01")
+#         ), 
+#        xmax=c(
+#             as.Date("1960-12-31"),
+#             as.Date("1968-12-31"),
+#             as.Date("1976-12-31"),
+#             as.Date("1980-12-31"),
+#             as.Date("1992-12-31"),
+#             as.Date("2000-12-31"),
+#             as.Date("2008-12-31"),
+#             as.Date("2016-12-31"),
+#             as.Date("2020-12-31")
+#         ), 
+#        ymin = c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf), 
+#        ymax = c(-Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf)
+#     )
+
+# Plot just the top agencies this way:
+prep2$Agency <- as.factor(prep2$Agency)
+# ggplot(prep2 %>% filter(Agency %in% c("Defense","Health and Human Services", "Treasury", "Social Security")), aes(x = year, y = Percent, color = Agency)) + 
+#   geom_line() +
+#   annotate("rect", 
+#        #fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+#        fill = c("white","blue","white","blue","white","blue","white","blue","white"), 
+#        alpha = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1), 
+#        xmin=c(
+#             as.Date("1960-01-01"),
+#             as.Date("1961-01-01"),
+#             as.Date("1969-01-01"),
+#             as.Date("1977-01-01"),
+#             as.Date("1981-01-01"),
+#             as.Date("1993-01-01"),
+#             as.Date("2001-01-01"),
+#             as.Date("2009-01-01"),
+#             as.Date("2017-01-01")
+#         ), 
+#        xmax=c(
+#             as.Date("1960-12-31"),
+#             as.Date("1968-12-31"),
+#             as.Date("1976-12-31"),
+#             as.Date("1980-12-31"),
+#             as.Date("1992-12-31"),
+#             as.Date("2000-12-31"),
+#             as.Date("2008-12-31"),
+#             as.Date("2016-12-31"),
+#             as.Date("2020-12-31")
+#         ), 
+#        ymin = c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf), 
+#        ymax = c(-Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf)
+#     )
+
+# Plot 5: Facet grid for 6 major agencies, with background color for overall party:
+ggplot(prep2 %>% filter(Agency %in% c("Defense","Health and Human Services", "Treasury", "Social Security")), aes(x = year, y = Percent)) + 
+  geom_line() +
+  facet_grid(Agency ~ ., scales = "free") +
+  xlab("Year") +
+  ylab("Percent") +
+  ggtitle("Percent of Federal Budget from 1962-2018")
+  
+```
+
+
+Finally, in an effort to isolate trends in these agencies by elected party, we colored the background of the plot blue for Democrats, Red for Republicans, and purple for mixed control of executive and legislative branches:
+
+
+```{r fig.width=7, fig.height=6}
+library(gridExtra)
+# Manually facet your graphs:
+p1 <- ggplot(prep2 %>% filter(Agency == "Defense") , aes(x = year, y = Percent)) + geom_line() +
+    annotate("rect",
+       #fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+       fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+       alpha = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1),
+       xmin=c(
+            as.Date("1960-01-01"),
+            as.Date("1961-01-01"),
+            as.Date("1969-01-01"),
+            as.Date("1977-01-01"),
+            as.Date("1981-01-01"),
+            as.Date("1993-01-01"),
+            as.Date("2001-01-01"),
+            as.Date("2009-01-01"),
+            as.Date("2017-01-01")
+        ),
+       xmax=c(
+            as.Date("1960-12-31"),
+            as.Date("1968-12-31"),
+            as.Date("1976-12-31"),
+            as.Date("1980-12-31"),
+            as.Date("1992-12-31"),
+            as.Date("2000-12-31"),
+            as.Date("2008-12-31"),
+            as.Date("2016-12-31"),
+            as.Date("2020-12-31")
+        ),
+       ymin = c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf),
+       ymax = c(-Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf)
+    ) +
+  xlab("Defense") +
+  ylab("Percent") +
+  ggtitle("Percent of Federal Budget by Agency and Party of US President from 1962-2018")
+p2 <- ggplot(prep2 %>% filter(Agency == "Health and Human Services") , aes(x = year, y = Percent)) + geom_line() +
+    annotate("rect",
+       #fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+       fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+       alpha = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1),
+       xmin=c(
+            as.Date("1960-01-01"),
+            as.Date("1961-01-01"),
+            as.Date("1969-01-01"),
+            as.Date("1977-01-01"),
+            as.Date("1981-01-01"),
+            as.Date("1993-01-01"),
+            as.Date("2001-01-01"),
+            as.Date("2009-01-01"),
+            as.Date("2017-01-01")
+        ),
+       xmax=c(
+            as.Date("1960-12-31"),
+            as.Date("1968-12-31"),
+            as.Date("1976-12-31"),
+            as.Date("1980-12-31"),
+            as.Date("1992-12-31"),
+            as.Date("2000-12-31"),
+            as.Date("2008-12-31"),
+            as.Date("2016-12-31"),
+            as.Date("2020-12-31")
+        ),
+       ymin = c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf),
+       ymax = c(-Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf)
+    ) +
+  xlab("Health and Human Services") +
+  ylab("Percent") +
+  ggtitle(" ")
+p3 <- ggplot(prep2 %>% filter(Agency == "Treasury") , aes(x = year, y = Percent)) + geom_line() +
+    annotate("rect",
+       #fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+       fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+       alpha = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1),
+       xmin=c(
+            as.Date("1960-01-01"),
+            as.Date("1961-01-01"),
+            as.Date("1969-01-01"),
+            as.Date("1977-01-01"),
+            as.Date("1981-01-01"),
+            as.Date("1993-01-01"),
+            as.Date("2001-01-01"),
+            as.Date("2009-01-01"),
+            as.Date("2017-01-01")
+        ),
+       xmax=c(
+            as.Date("1960-12-31"),
+            as.Date("1968-12-31"),
+            as.Date("1976-12-31"),
+            as.Date("1980-12-31"),
+            as.Date("1992-12-31"),
+            as.Date("2000-12-31"),
+            as.Date("2008-12-31"),
+            as.Date("2016-12-31"),
+            as.Date("2020-12-31")
+        ),
+       ymin = c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf),
+       ymax = c(-Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf)
+    ) +
+  ylab("Percent") +
+  xlab("Treasury") +
+  ggtitle(" ")
+p4 <- ggplot(prep2 %>% filter(Agency == "Social Security") , aes(x = year, y = Percent)) + geom_line() +
+    annotate("rect",
+       #fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+       fill = c("red","blue","red","blue","red","blue","red","blue","red"),
+       alpha = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1),
+       xmin=c(
+            as.Date("1960-01-01"),
+            as.Date("1961-01-01"),
+            as.Date("1969-01-01"),
+            as.Date("1977-01-01"),
+            as.Date("1981-01-01"),
+            as.Date("1993-01-01"),
+            as.Date("2001-01-01"),
+            as.Date("2009-01-01"),
+            as.Date("2017-01-01")
+        ),
+       xmax=c(
+            as.Date("1960-12-31"),
+            as.Date("1968-12-31"),
+            as.Date("1976-12-31"),
+            as.Date("1980-12-31"),
+            as.Date("1992-12-31"),
+            as.Date("2000-12-31"),
+            as.Date("2008-12-31"),
+            as.Date("2016-12-31"),
+            as.Date("2020-12-31")
+        ),
+       ymin = c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf),
+       ymax = c(-Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf, Inf)
+    )+
+  xlab("Social Security \nYear") +
+  ylab("Percent") +
+  ggtitle(" ")
+grid.arrange(p1, p2, p3, p4, nrow = 4)
+
+
+```
+
+
+# 5. Executive Summary
+
+
+There is a clear change in how the US Federal Government collects revenue, beginning in the 1950s and continuing until present day. Specifically, Social Insurance has gone from representing 10% to 40% of federal revenue, with clear increases during Republican presidencies and decreases during Democratic presidencies.
+
+As a trade-off, corporate income tax has decreased as a share of total revenue, but this change does not appear to be correlated with any particular party.
+
+
+
+```{r fig.width=9, fig.height=7}
+t_2_2_1x <- t_2_2 %>% 
+  select(year, Individual = `Individual Income Taxes-`, 
+         Corporation = `Corporation Income Taxes-`, 
+         Social_Insurance = `Social Insurance and Retirement Receipts-Total`, 
+         Excise = `Excise Taxes -(Off - Budget)`, 
+         Other = `Other-(Off - Budget)`)
+t_2_2_2x <- t_2_2_1x %>% gather(key = "Source", value = "Percent", -year)
+t_2_2_2x$year <- as.Date(paste0(t_2_2_2x$year, "-01-01"), "%Y-%m-%d")
+
+t_2_2_2x <- t_2_2_2x %>% filter(year > "1952-01-01", year < "2017-01-01")
+ggplot(t_2_2_2x, aes(x = year, y = Percent, color = Source)) + geom_line() +
+      annotate("rect", 
+      fill = c("blue","white","blue","white","blue","white","blue"), 
+      alpha = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1), 
+      xmin=c(
+           as.Date("1963-01-01"),
+           as.Date("1969-01-01"),
+           as.Date("1977-01-01"),
+           as.Date("1981-01-01"),
+           as.Date("1993-01-01"),
+           as.Date("2001-01-01"),
+           as.Date("2009-01-01")
+       ), 
+      xmax=c(
+           as.Date("1968-12-31"),
+           as.Date("1976-12-31"),
+           as.Date("1980-12-31"),
+           as.Date("1992-12-31"),
+           as.Date("2000-12-31"),
+           as.Date("2008-12-31"),
+           as.Date("2016-12-31")
+       ), 
+      ymin = c(-Inf, -Inf, -Inf, -Inf, -Inf, -Inf, -Inf), 
+      ymax = c(Inf, Inf, Inf, Inf, Inf, Inf, Inf)
+   )+ 
+  ggtitle("Receipts by Source as Percentages of GDP since 1934 \n(Blue Years Representing Democratic Presidents)") +
+  xlab("\nYear") +
+  ylab("Percent of Current-Year GDP\n") +
+  theme_grey(base_size = 12) +
+  theme(axis.text=element_text(size=12),
+    axis.title=element_text(size=12),
+    plot.title = element_text(size = 14))
+
+```
+
+
+Federal income, presented above, is one component of Federal Surplus (or Federal Deficit). Below, we plot overlapping density curves that lead to a number of conclusions:
+
+
+1. With few exceptions, both parties have incurred a deficit almost every year that they have held the presidency since 1916. 
+2. The mode of the Democratic distribution falls to the right of the Republican distribution, suggesting Republicans have more of a tendency to accrue a largest deficit.
+3. Democrats have incurred the largest single-year deficits. These occurred during the great recession in the late 2000s.
+
+
+```{r fig.width=9, fig.height=7}
+ggplot(def_clean, aes(x = Surplus_2009)) + 
+  geom_density(aes(color = pres_party)) + 
+  scale_color_manual(values=c("#56B4E9","#FF0000"), name = "Presidential Party") +
+  ggtitle("Density Plot of US Annual Budget Surplus/Deficit \nby Presidential Party (1910-2016)") + 
+  xlab("\nSurplus or Deficit (in billions of 2009 dollars)") +
+  ylab("Density\n") +
+  theme_grey(base_size = 12) +
+  theme(axis.text=element_text(size=12),
+    axis.title=element_text(size=14),
+    plot.title = element_text(size = 12))
+  
+
+```
+
+
+Together with Federal Income, Federal Spending is the second factor that can influence the deficit. Federal spending is allocated across a number of federal agencies. Below, we compare the relative levels to which agencies tend to be funded during Democratic and Republican presidencies since 1980. We find that:
+
+
+1. Republicans tend to favor Defense funding, which is not surprising, given that party's "hawkish" perception.
+2. Also somewhat unsurprisingly, Democrats favor allocating resources to social services over defense, particularly to the Department of Health and Human Services. The Affordable Care Act in the early 2010s is a big driver of this shift.
+3. Surprisingly, Republicans tend to allocate a larger share of funding to the Department of Education than do Democrats.
+
+```{r fig.width=9, fig.height=7}
+
+zz_late$Agency <- gsub("Health and Human Services", "Health/Services", zz_late$Agency)
+
+zz_late <- zz_late %>% 
+  filter(Agency %in% c("Health/Services","Social Security","Defense","Treasury","Agriculture","Veterans Affairs","Department of Labor","Transportation","Education"))
+
+positions <- c("Health/Services","Social Security","Defense","Treasury","Agriculture","Veterans Affairs","Department of Labor","Transportation","Education")
+
+ggplot(zz_late, aes(Agency, Mean_Allocation)) +   
+  geom_bar(aes(fill = pres_party), position = "dodge", stat="identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_discrete(limits = positions) +
+  xlab("\nFederal Agency") +
+  ylab("Average Percent of Federal Budget\n") +
+  ggtitle("Average Percent of Federal Budget by Agency and Party \nbetween 1980-2016") +
+  scale_fill_manual(values=c("#56B4E9","#FF0000"), name = "Presidential Party") +
+  theme_grey(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), axis.text=element_text(size=12),
+    axis.title=element_text(size=14),
+    plot.title = element_text(size = 14))
+```
+
+
+# 6. Interactive component
+
+For our interactive component, we created a Shiny app, which can be found at the following link:  https://ojdajuiceman.shinyapps.io/test_app/.
+
+
+Instructions for use:
+
+
+1. For the first figure, data is displayed only for the selected year. 
+2. For the second figure, data is displayed for all years including the selected year through present day. For example, for the second plot, selecting 1980 will produce an average of all years between 1980 and 2016, inclusive.
+3. Both figures respond to the "Agencies" selector in the same manner.
+
+
+Future direction for visualization:
+
+
+One major limitation of this plot is that the user cannot flexibly select date ranges for the second plot. This would be more illustrative than the current format, where users can only modify the lower limit of a date range; the upper limit is fixed at 2016. This proposed feature would allow users to zoom in on adjacent pairs of administrations (e.g. Clinton/Bush or Bush/Obama). Further, this type of slider is available in Shiny. 
+
+
+This feature would, however, make it more challenging to use and interpret the first plot. For an individual year, all agency allocations must sum to one for this dataset, so selecting individual years makes this data easier to interpret.
+
+
+Finally, performance is actually a serious issue for this plot. If the bars adjusted in real time as the slider moved, I think the plot would be significantly more insightful. I believe a ground-up implementation using D3 could achieve this.
+
+
+# 7. Conclusion
+
+Generally speaking, it was hard to observe notable, visual differences in financial behavior between the two parties. Furthermore, it is nearly impossible to decouple the myriad historical and political events that influenced the financial behavior we see in this data. This being the case, in this analysis, we run the risk of potentially being misleading and assigning more credit (or blame) to the president that happened to be holding office as circumstances forced the government's hand when it came to spending.
+
+That being said, there are notable trends in that data that are consistent with how the parties are perceived today (particularly when looking at the last ~30 years). When controling the executive branch, Republicans have tended to spend more on defense, while Democrats have tended to spend more on social programs.
+
+
+
+# 8. Github links
+
+- Python Code: https://github.com/ojdajuiceman/EDAV_data_processing
+- R Code: https://github.com/ojdajuiceman/EDAV_R_Final
+- Shiny Code: https://github.com/ojdajuiceman/EDAV_final_shiny
+
