@@ -145,34 +145,11 @@ party$year <- as.character(party$year)
 
 # 1. Introduction
 
-### 1.1. Topic Introduction
-
-
 
 Leading up to the 2018 U.S. midterm elections in November, political discourse seemed to reach a fever pitch. Not only have politics become a hot topic, but political discussions have become increasingly hostile across political party lines. I think this hostility is exacerbated by misinformation; neither party can seem to agree (at least publicly) on the facts.
 
 
 This project is an effort to get back to the facts when it comes to government spending. By using publicly available federal government spending data from whitehouse.gov and augmenting it with party information (i.e. which political party controlled the executive and legislative branches in a given year), we can investigate federal spending behavior by party. More specifically, we can begin to answer questions such as “which party tends to spend more on social programs and to what degree?” 
-
-
-### 1.2. Group Members and Responsibilities
-
-
-Members: Oscar Jasklowski and Nicolas Maes
-
-
-Responsibilities:
-
-
-1. Data preparation (identification, processing in Python, loading into R): Oscar
-2. Data quality: Oscar
-3. Main Analysis: 
-  - Federal income: Nicolas
-  - Federal debt: Both members
-  - Funding by agency: Oscar
-4. Executive Summary: Oscar
-5. Interactive Component: Oscar
-6. Write up, publishing, and submission: Oscar
 
 
 # 2. Description of data
